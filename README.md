@@ -1,0 +1,1 @@
+This is an implementation of the Chip 8 Emulator in Rust.
