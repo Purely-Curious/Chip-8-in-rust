@@ -1,0 +1,5 @@
+Find a 2d graphics library.
+sdl2
+refactor the fuck out of everything.
+
+FINISH THIS PROJECT BY TONIGHT: (need to place smth else on cv [procrastinated for far too long])
