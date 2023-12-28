@@ -1,5 +1,6 @@
-mod Chip_8;
-use crate::Chip_8::Chip_8::*;
+//use crate::chip_8::*;
+mod chip_8;
+
 use std::io;
 //use std::io::BufReader;
 //use std::fs::File;
@@ -51,8 +52,9 @@ fn main() -> Result<(), io::Error>{
     // run_chip_8(memory, registers, opcodes, pc);
     let mut filename = String::new();
     io::stdin().read_line(&mut filename)?;
-    let chip_8 = Chip_8::new(filename.as_mut_str());
-    println!("Hello, world!");
+    let chip_8 = chip_8::Chip8::new(filename.as_str());
+    //chip_8.run_chip_8(&mut memory, &mut registers, opcodes, program_counter, stack_pointer, &mut stack, address_register);
+    println!("{:?}", chip_8);
 
     Ok(())
 }

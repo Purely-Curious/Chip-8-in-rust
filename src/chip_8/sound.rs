@@ -1,6 +1,6 @@
 
-use sdl2;
 
+#[derive(Debug)]
     pub struct Sound
     {
         sound_timer: u16,

@@ -1,6 +1,6 @@
 //use std::io::BufReader;
 // use std::fs::File;
-use rand::prelude::*;
+//use rand::prelude::*;
 
 /*
 extern crate display;
@@ -10,14 +10,14 @@ use Opcode;
 
  */
 
-type Opcode = Vec<u16>;
-type Opcodes = Vec<Opcode>;
+//type Opcode = Vec<u16>;
+//type Opcodes = Vec<Opcode>;
 
 //pub mod Cpu;
-    use std::{io, fs, default};
+    use std::{io, fs};
 
 
-
+#[derive(Debug)]
     pub struct Cpu
     {
         framebuffer: [i16; 64 * 32],
@@ -37,10 +37,10 @@ type Opcodes = Vec<Opcode>;
         fn retrive_opcode_data(opcode: u16) -> Vec<u16>
         {
             let mut processed_opcode: Vec<u16> = Vec::with_capacity(4);
-            processed_opcode.push((opcode  >> 12));
+            processed_opcode.push(opcode  >> 12);
             processed_opcode.push((opcode & 0x0f00)>> 8);
             processed_opcode.push((opcode & 0x00f0)>> 4);
-            processed_opcode.push((opcode & 0x000f));
+            processed_opcode.push(opcode & 0x000f);
             return processed_opcode;
         }
 
@@ -167,14 +167,14 @@ type Opcodes = Vec<Opcode>;
                    },
                    5 => 
                    {
-                       if (registers[processed_opcode[1] as usize] > registers[processed_opcode[2] as usize])
+                       if registers[processed_opcode[1] as usize] > registers[processed_opcode[2] as usize]
                        {
                            registers[0xf] = 1;
                        }
                        else {
                            registers[0xf] = 0;
                        }
-                       registers[processed_opcode[1] as usize] = (registers[processed_opcode[1] as usize] - registers[processed_opcode[2] as usize]);
+                       registers[processed_opcode[1] as usize] = registers[processed_opcode[1] as usize] - registers[processed_opcode[2] as usize];
                    },
                    6 => 
                    {
@@ -182,14 +182,14 @@ type Opcodes = Vec<Opcode>;
                    },
                    7 => 
                    {
-                       if (registers[processed_opcode[2] as usize] > registers[processed_opcode[1] as usize])
+                       if registers[processed_opcode[2] as usize] > registers[processed_opcode[1] as usize]
                        {
                            registers[0xf] = 1;
                        }
                        else {
                            registers[0xf] = 0;
                        }
-                       registers[processed_opcode[1] as usize] = (registers[processed_opcode[2] as usize] - registers[processed_opcode[1] as usize]);
+                       registers[processed_opcode[1] as usize] = registers[processed_opcode[2] as usize] - registers[processed_opcode[1] as usize];
        
                    },
                    0xe => 
@@ -208,7 +208,7 @@ type Opcodes = Vec<Opcode>;
                },
                0x9 => 
                {
-                   if (registers[processed_opcode[1] as usize] != registers[processed_opcode[2] as usize])
+                   if registers[processed_opcode[1] as usize] != registers[processed_opcode[2] as usize]
                    {
                        *program_counter += 2;
                    }
