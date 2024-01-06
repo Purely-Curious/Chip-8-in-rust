@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(non_snake_case)]
 //use crate::chip_8::*;
 mod chip_8;
 
@@ -29,32 +31,41 @@ fn main() -> Result<(), io::Error>{
     // The data is stored as big endian.
         
     // Total memory for the emulator.
-    let mut memory: Vec<i16> = Vec::with_capacity(4096);
+    
+    //let mut memory: Vec<i16> = Vec::with_capacity(4096);
+    
     // Total amount of registers: the last one cannot be used in a program.
-    let mut registers: Vec<u8> = Vec::with_capacity(16);
+    
+    //let mut registers: Vec<u8> = Vec::with_capacity(16);
 
     // Special register Used for storing memory addresses.
-    let mut i: i16 = 0;
+    
+    //let mut i: i16 = 0;
     
     // The program counter.
     // The program counter (PC) should be 16-bit, and is used to store the currently executing address.
-    let mut pc: i16 = 0;
+    
+    //let mut pc: i16 = 0;
 
     // The stack pointer (SP) can be 8-bit, it is used to point to the topmost level of the stack.
-    let mut sp: i8 = 0;
+    
+    //let mut sp: i8 = 0;
 
     //  The stack is an array of 16 16-bit values, used to store the address that the interpreter shoud return to when finished with a subroutine.
     // Chip-8 allows for up to 16 levels of nested subroutines.
 
-    let mut stack: Vec<i16> = Vec::with_capacity(16);
+    //let mut stack: Vec<i16> = Vec::with_capacity(16);
 
 
     // run_chip_8(memory, registers, opcodes, pc);
+    println!("Please enter the name of the chip-8 rom:");
     let mut filename = String::new();
     io::stdin().read_line(&mut filename)?;
-    let chip_8 = chip_8::Chip8::new(filename.as_str());
+    filename = filename.trim_end().to_string();
+    //println!("{:?}", filename);
+    let _chip_8 = chip_8::Chip8::new(filename.as_str(), 640, 320);
     //chip_8.run_chip_8(&mut memory, &mut registers, opcodes, program_counter, stack_pointer, &mut stack, address_register);
-    println!("{:?}", chip_8);
+    //println!("{:?}", chip_8);
 
     Ok(())
 }

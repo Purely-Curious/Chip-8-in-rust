@@ -1,54 +1,136 @@
 extern crate sdl2; 
 
+use sdl2::EventPump;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use sdl2::render::Canvas;
+use sdl2::video::Window;
 
 
 
  
-#[derive(Debug)]
-    pub struct Display<'a>
+ // const WHITE: Color = Color::WHITE;
+
+    pub struct Display
     {
+        title: String,
         window_height: u32,
         window_width: u32,
-        framebuffer: &'a[i16],
+        framebuffer: [i16; 64 * 32],
+        canvas: Canvas<Window>,
+        event_pump: EventPump,
+        pub key_pressed: [i8; 16],
     }
 
-    impl<'a> Display<'a> 
+    impl Display 
     {
-        pub fn new() -> Display<'a>
-        {
-            Display
-            {
-                window_height: 640,
-                window_width: 320,
-                framebuffer: &[0; 64*32],
-            }
-
-        }
-        pub fn display_screen(&self)
+        pub fn new(title: String, window_width: u32, window_height: u32) -> Display
         {
             let sdl_context = sdl2::init().unwrap();
             let video_subsystem = sdl_context.video().unwrap();
 
-            let window = video_subsystem.window("Chip-8 emulator", self.window_width, self.window_height)
+            let window = video_subsystem.window("Chip-8 emulator", window_width, window_height)
                     .position_centered()
                     .build()
                     .unwrap();
 
-            let mut canvas = window.into_canvas()
+            let canvas = window.into_canvas()
             .build().unwrap();
-            
-            canvas.set_draw_color(Color::RGB(0, 255, 255));
-            canvas.clear();
-            canvas.present();
 
-            let mut event_pump = sdl_context.event_pump().unwrap();
+            let event_pump = sdl_context.event_pump().unwrap();
+
+
+            Display
+            {
+                title,
+                window_height,
+                window_width,
+                framebuffer: [0; 64*32],
+                canvas,
+                event_pump,
+                key_pressed: [-1; 16],
+            }
+
+        }
+
+        pub fn store_key_value(&mut self, index: usize, mut registers: [u8; 16]) 
+        {
+            for event in self.event_pump.poll_iter()
+            {
+                match event
+                {
+                    Event::KeyDown { keycode: Some(Keycode::A), .. } =>
+                        {
+                            registers[index] = 1;
+                        },
+                    Event::KeyDown { keycode: Some(Keycode::B), .. } =>
+                        {
+                            registers[index] = 2;
+                        },
+                    Event::KeyDown { keycode: Some(Keycode::C), .. } =>
+                        {
+                            registers[index] = 3;
+                        },
+                    Event::KeyDown { keycode: Some(Keycode::D), .. } =>
+                        {
+                            registers[index] = 4;
+                        },
+                        _ => (),
+                }
+            }
+        }
+
+        fn set_screen(&mut self, buffer: [i16; 64 * 32])
+        {
+            let mut _color = Color::WHITE;
+            for row in 0..64
+            {
+                for col in 0..32
+                {
+                    let idx = row * col + col;
+                    self.framebuffer[idx] = buffer[idx]  ^ self.framebuffer[idx];
+
+                    match self.framebuffer[idx]
+                    {
+                        0 => {
+                            todo!()
+                        },
+                        1 => {
+                            todo!()
+                        },
+                        _ => (),
+                    }
+                    //self.canvas.
+                    todo!();
+                }
+            }
+        }
+        pub fn draw_on_screen(&mut self, x: u8, y: u8, nibble: u16)
+        {
+            //draw(registers[opcode[1] as usize], registers[opcode[2] as usize], opcode[3]);
+                   /*Dxyn - DRW Vx, Vy, nibble
+                   Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+       
+                   The interpreter reads n bytes from memory, starting at the address stored in I.
+                   These bytes are then displayed as sprites on screen at coordinates (Vx, Vy).
+                   Sprites are XORed onto the existing screen.
+                   If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0.
+                   If the sprite is positioned so part of it is outside the coordinates of the display, 
+                   it wraps around to the opposite side of the screen.
+                   See instruction 8xy3 for more information on XOR, 
+                   and section 2.4, Display, for more information on the Chip-8 screen and sprites. */
+        }
+
+        pub fn display_screen(&mut self)
+        {
+            self.canvas.set_draw_color(Color::RGB(0, 255, 255));
+            self.canvas.clear();
+            self.canvas.present();
 
             'running: loop
             {
-                for event in event_pump.poll_iter()
+                for event in self.event_pump.poll_iter()
                 {
                     match event
                     {

@@ -1,0 +1,47 @@
+TODO:
+
+[*]: remove frame_buffer from cpu as the display one can be used instead.
+
+
+[*]: re-organise the display file so that all variables such as the canvas, event-poll and etc,
+are in the struct so that i can call a function display_screen() in the Chip_8 struct file.
+
+[*]: place an array in the display struct that keeps track of whether or not a key has been pressed.
+
+reset the array to nil, when each instruction is parsed in the Chip_8 run_chip_8 function.
+-> will set it to include the value of the key press instead.
+
+[*]: create a key pressed checking function in Cpu which takes in an instance of a Display struct
+so that the key is read properly.
+
+register may not be needed as the index can be used in the display array to check if that key has been pressed.
+
+Function signature -> pseudocode:
+fn key_press_check(index: u16, display: &display, if_pressed: bool, registers: Vec<u16>) -> ()
+{
+  if if_pressed
+  {
+    if display[index] { skip instruction }
+  }
+  else
+  {
+  }
+}
+
+
+[*]: create a function that waits for a key press so that it's read into the registers.
+
+Function signature:
+fn key_press_wait(index: u16, display: &display, waiting_for_key: bool, registers: Vec<u16>) -> ()
+{
+while (waiting_for_key)
+{
+  display.store_key_value(index, waiting_for_key, registers)
+}
+}
+
+fn store_key_value(index: u16, waiting_for_key, registers: Vec<u16>) -> ()
+{
+loop through display event poll until a key is pressed, store that into register[index]
+turn waiting_for_key to false;
+}

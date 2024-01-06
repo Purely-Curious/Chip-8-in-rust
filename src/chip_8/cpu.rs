@@ -16,250 +16,285 @@ use Opcode;
 //pub mod Cpu;
     use std::{io, fs};
 
+use super::display::Display;
 
-#[derive(Debug)]
+
+struct Opcode([u16; 4]);
+const SPRITE_DATA: [i8; 8 * 16] = [0; 8 * 16];
     pub struct Cpu
     {
-        framebuffer: [i16; 64 * 32],
-        opcodes: Vec<Vec<u16>>,
+        memory: [i16; 4096],
+        registers: [u8; 16],
+        stack: Vec<i16>, //[i16; 16],
+        pub program_counter: i16,
+        address_register: i16,
+        stack_pointer: i8,
+        //delay_timer: i8,
+        //sound_timer: i8,
+        pub opcodes: Vec<Vec<u16>>,
     }
+
     impl Cpu
     {
         pub fn new(filename: &str) -> Cpu
         {
             Cpu
             {
-                framebuffer: [0; 64 * 32],
+                memory: [0; 4096],
+                registers: [0; 16],
+                stack: [0; 16].to_vec(),
+                program_counter: 0,
+                address_register: 0,
+                stack_pointer: 0,
                 opcodes: Cpu::load_instructions(filename).unwrap(),
             }
         }
-
-        fn retrive_opcode_data(opcode: u16) -> Vec<u16>
+        fn set_sprite_data_to_memory(&mut self)
         {
-            let mut processed_opcode: Vec<u16> = Vec::with_capacity(4);
-            processed_opcode.push(opcode  >> 12);
-            processed_opcode.push((opcode & 0x0f00)>> 8);
-            processed_opcode.push((opcode & 0x00f0)>> 4);
-            processed_opcode.push(opcode & 0x000f);
-            return processed_opcode;
+            todo!()
+        }
+
+        fn retrive_opcode_data(code: u16) -> Vec<u16>
+        {
+            let mut opcode: Vec<u16> = Vec::with_capacity(4);
+            opcode.push(code  >> 12);
+            opcode.push((code & 0x0f00)>> 8);
+            opcode.push((code & 0x00f0)>> 4);
+            opcode.push(code & 0x000f);
+            return opcode;
         }
 
 
-       
+       //TODO: Rework this function using two pointer technique.
         fn load_instructions(filename: &str) -> io::Result<Vec<Vec<u16>>>
         {
             let contents = fs::read(filename)?;
-            let copy_of_contents = contents.clone();
-            //let c_contents = copy_of_contents; //.iter().skip(1);
-            let results = contents.iter()
-            .zip(copy_of_contents
-                .iter()
-                .skip(1));
 
-            let codes: Vec<u16> = results.map(|x| {
-                (*(x.0) as u16) << 8 | (*(x.1) as u16 )
-            }).collect();
+            let mut codes: Vec<u16> = Vec::new();
+            for idx in 1..contents.len()
+            {
+                codes.push(((contents[idx-1] as u16) << 8) | (contents[idx]) as u16);
+            }
 
             let opcodes: Vec<Vec<u16>> = codes.iter().map(|x|
             {
                 Cpu::retrive_opcode_data(*x)
             }).collect();
+
             Ok(opcodes)
         }
 
 
-        fn register_load(memory:  &mut Vec<i16>, registers: &mut Vec<u8>, address_register: &mut i16, index: &i16)
+        fn key_press_check(&mut self, index: u16, display: &Display, if_pressed: bool) -> ()
         {
-            for i in 0..=*index
+            if if_pressed
             {
-                registers[i as usize] = memory[(*address_register + i) as usize] as u8;
+                if display.key_pressed[index as usize] != -1
+                {
+                    self.program_counter += 2;
+                }
+            }
+            else
+            {
+                if display.key_pressed[index as usize] == -1
+                {
+                    self.program_counter +=2;
+                }
             }
         }
 
-        fn register_dump(memory:  &mut Vec<i16>, registers: &mut Vec<u8>, address_register: &mut i16, index: &i16)
+        fn key_press_wait(&mut self, index: u16, display: &mut Display)
+        {
+            display.store_key_value(index.into(), self.registers);
+        }
+
+        fn register_load(&mut self, index: &i16)
         {
             for i in 0..=*index
             {
-                memory[(*address_register + i) as usize] = registers[i as usize] as i16;
+                self.registers[i as usize] = self.memory[(self.address_register + i) as usize] as u8;
+            }
+        }
+
+        fn register_dump(&mut self, index: &i16)
+        {
+            for i in 0..=*index
+            {
+                self.memory[(self.address_register + i) as usize] = self.registers[i as usize] as i16;
             }
 
         }
 
-        pub fn execute_opcode(&self, opcode: u16, memory: &mut Vec<i16>, registers: &mut Vec<u8>, address_register: &mut i16,
-            program_counter: &mut i16, stack_pointer: &mut i8, stack: &mut Vec<i16>)
+        pub fn execute_opcode(&mut self, display: &mut Display, opcode: Vec<u16>)
        {
-           let processed_opcode = Cpu::retrive_opcode_data(opcode);
-           match processed_opcode[0] {
-               0 => match processed_opcode[2]
+           //let opcode = Cpu::retrive_opcode_data(opcode);
+           match opcode[0] {
+               0 => match opcode[2]
                {
                    0 => todo!(), // clear_screen(); Maybe a reference to the window could be used.
                    0xe => 
                        {
-                           *program_counter = *stack.last().unwrap();
-                           *stack_pointer -= 1;
-                           stack.pop();
+                           self.program_counter = *self.stack.last().unwrap();
+                           self.stack_pointer -= 1;
+                           self.stack.pop();
                        },
                    _ => (),
        
                },
-               0x1 => *program_counter =  (processed_opcode[1] << 8 | processed_opcode[2] << 4 | processed_opcode[3]) as i16,
+               0x1 => self.program_counter =  (opcode[1] << 8 | opcode[2] << 4 | opcode[3]) as i16,
                0x2 => 
                {
-                   *stack_pointer += 1;
-                   stack.push(*program_counter);
-                   *program_counter =  (processed_opcode[1] << 8 | processed_opcode[2] << 4 | processed_opcode[3]) as i16;
+                   self.stack_pointer += 1;
+                   self.stack.push(self.program_counter);
+                   self.program_counter =  (opcode[1] << 8 | opcode[2] << 4 | opcode[3]) as i16;
                },
                0x3 => 
                {
-                   if registers[processed_opcode[1] as usize] == (processed_opcode[2] << 4 | processed_opcode[3]) as u8
+                   if self.registers[opcode[1] as usize] == (opcode[2] << 4 | opcode[3]) as u8
                    {
-                       *program_counter += 2;
+                       self.program_counter += 2;
                    }
                },
                0x4 =>
                {
-                   if registers[processed_opcode[1] as usize] != (processed_opcode[2] << 4 | processed_opcode[3]) as u8
+                   if self.registers[opcode[1] as usize] != (opcode[2] << 4 | opcode[3]) as u8
                    {
-                       *program_counter += 2;
+                       self.program_counter += 2;
                    }
                },
                0x5 => 
                {
-                   if registers[processed_opcode[1] as usize] == registers[processed_opcode[2] as usize]
+                   if self.registers[opcode[1] as usize] == self.registers[opcode[2] as usize]
                    {
-                       *program_counter += 2;
+                       self.program_counter += 2;
                    }
                },
                0x6 => 
                {
-                   registers[processed_opcode[1] as usize] = (processed_opcode[2] << 4 | processed_opcode[3]) as u8;
+                   self.registers[opcode[1] as usize] = (opcode[2] << 4 | opcode[3]) as u8;
                },
                0x7 => 
                {
-                  registers[processed_opcode[1] as usize] = 
-                       registers[processed_opcode[1] as usize] + (processed_opcode[1] << 4 | processed_opcode[2]) as u8;
+                  self.registers[opcode[1] as usize] = 
+                       self.registers[opcode[1] as usize] + (opcode[1] << 4 | opcode[2]) as u8;
                },
-               0x8 => match processed_opcode[3] 
+               0x8 => match opcode[3] 
                {
                    0 => 
                    {
-                       registers[processed_opcode[1] as usize] = registers[processed_opcode[2] as usize];
+                       self.registers[opcode[1] as usize] = self.registers[opcode[2] as usize];
                    },
                    1 => 
                    {
-                       registers[processed_opcode[1] as usize] = registers[processed_opcode[1] as usize] | registers[processed_opcode[2] as usize];
+                       self.registers[opcode[1] as usize] = self.registers[opcode[1] as usize] | self.registers[opcode[2] as usize];
                    },
                    2 => 
                    {
-                       registers[processed_opcode[1] as usize] = registers[processed_opcode[1] as usize] & registers[processed_opcode[2] as usize];
+                       self.registers[opcode[1] as usize] = self.registers[opcode[1] as usize] & self.registers[opcode[2] as usize];
                    }, 
                    3 => 
                    {
-                       registers[processed_opcode[1] as usize] = registers[processed_opcode[1] as usize] ^ registers[processed_opcode[2] as usize];
+                       self.registers[opcode[1] as usize] = self.registers[opcode[1] as usize] ^ self.registers[opcode[2] as usize];
                    },
                    4 => 
                    {
-                       if (registers[processed_opcode[1] as usize] + registers[processed_opcode[2] as usize]) as i16 > 255
+                       if (self.registers[opcode[1] as usize] + self.registers[opcode[2] as usize]) as i16 > 255
                        {
-                           registers[0xf] = 1;
+                           self.registers[0xf] = 1;
                        }
-                       registers[processed_opcode[1] as usize] = (registers[processed_opcode[1] as usize] + registers[processed_opcode[2] as usize]) % 255;
+                       self.registers[opcode[1] as usize] = (self.registers[opcode[1] as usize] + self.registers[opcode[2] as usize]) % 255;
                    },
                    5 => 
                    {
-                       if registers[processed_opcode[1] as usize] > registers[processed_opcode[2] as usize]
+                       if self.registers[opcode[1] as usize] > self.registers[opcode[2] as usize]
                        {
-                           registers[0xf] = 1;
+                           self.registers[0xf] = 1;
                        }
                        else {
-                           registers[0xf] = 0;
+                           self.registers[0xf] = 0;
                        }
-                       registers[processed_opcode[1] as usize] = registers[processed_opcode[1] as usize] - registers[processed_opcode[2] as usize];
+                       self.registers[opcode[1] as usize] = self.registers[opcode[1] as usize] - self.registers[opcode[2] as usize];
                    },
                    6 => 
                    {
-                       registers[processed_opcode[1] as usize] = (registers[processed_opcode[2] as usize] << 4) | (registers[processed_opcode[3] as usize]);
+                       self.registers[opcode[1] as usize] = (self.registers[opcode[2] as usize] << 4) | (self.registers[opcode[3] as usize]);
                    },
                    7 => 
                    {
-                       if registers[processed_opcode[2] as usize] > registers[processed_opcode[1] as usize]
+                       if self.registers[opcode[2] as usize] > self.registers[opcode[1] as usize]
                        {
-                           registers[0xf] = 1;
+                           self.registers[0xf] = 1;
                        }
                        else {
-                           registers[0xf] = 0;
+                           self.registers[0xf] = 0;
                        }
-                       registers[processed_opcode[1] as usize] = registers[processed_opcode[2] as usize] - registers[processed_opcode[1] as usize];
+                       self.registers[opcode[1] as usize] = self.registers[opcode[2] as usize] - self.registers[opcode[1] as usize];
        
                    },
                    0xe => 
                    {
-                       if (registers[processed_opcode[1] as usize]) >> 7 & 1 == 1
+                       if (self.registers[opcode[1] as usize] >> 7) & 1 == 1
                        {
-                           registers[0xf] = 1;
-                           registers[processed_opcode[1] as usize] *= 2;
+                           self.registers[0xf] = 1;
+                           self.registers[opcode[1] as usize] *= 2;
        
                        }
                        else {
-                           registers[0xf] = 0;
+                           self.registers[0xf] = 0;
                        }
                    },
                    _ => todo!(),
                },
                0x9 => 
                {
-                   if registers[processed_opcode[1] as usize] != registers[processed_opcode[2] as usize]
+                   if self.registers[opcode[1] as usize] != self.registers[opcode[2] as usize]
                    {
-                       *program_counter += 2;
+                       self.program_counter += 2;
                    }
                },
                0xa => 
                {
-                   *address_register = ((processed_opcode[1] << 8) | (processed_opcode[2]) << 4 | (processed_opcode[3])) as i16;
+                   self.address_register = ((opcode[1] << 8) | (opcode[2]) << 4 | (opcode[3])) as i16;
                },
                0xb => // Jump => set the program counter to another addr.
                {
-                   *program_counter = ((processed_opcode[1] << 8) | (processed_opcode[2]  << 4) | (processed_opcode[3]) + (registers[0x0] as u16)) as i16;
+                   self.program_counter = ((opcode[1] << 8) | (opcode[2]  << 4) | (opcode[3]) + (self.registers[0x0] as u16)) as i16;
                },
                0xc => 
                {
-                   registers[processed_opcode[1] as usize] = rand::random::<u8>() & ((processed_opcode[2] << 4) | (processed_opcode[3])) as u8;
+                   self.registers[opcode[1] as usize] = rand::random::<u8>() & ((opcode[2] << 4) | (opcode[3])) as u8;
                },
                0xd => 
                {
-                   //draw(registers[processed_opcode[1] as usize], registers[processed_opcode[2] as usize], processed_opcode[3]);
-                   /*Dxyn - DRW Vx, Vy, nibble
-                   Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
-       
-                   The interpreter reads n bytes from memory, starting at the address stored in I.
-                   These bytes are then displayed as sprites on screen at coordinates (Vx, Vy).
-                   Sprites are XORed onto the existing screen.
-                   If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0.
-                   If the sprite is positioned so part of it is outside the coordinates of the display, 
-                   it wraps around to the opposite side of the screen.
-                   See instruction 8xy3 for more information on XOR, 
-                   and section 2.4, Display, for more information on the Chip-8 screen and sprites. */
+                   display.draw_on_screen(self.registers[opcode[1] as usize], self.registers[opcode[2] as usize], opcode[3]);
+                   
                },
                0xe => // both opcodes need keyboard input -> for later. 
-               todo!(),
+                    match opcode[2]
+                    {
+                        9 => self.key_press_check(opcode[1], display, true),
+                        0xa => self.key_press_check(opcode[1], display, false),
+                        _ => (),
+                    }
                0xf => 
-                   match processed_opcode[2]
+                   match opcode[2]
                    {
-                       1 => match processed_opcode[3] {
+                       0 => self.key_press_wait(opcode[1], display),
+                       1 => match opcode[3] {
                            5 => todo!(),
                            8 => todo!(),
-                           0xe => *address_register += (registers[processed_opcode[1] as usize]) as i16,
+                           0xe => self.address_register += (self.registers[opcode[1] as usize]) as i16,
                            _ => (),
                        }
                        2 => todo!(), // Set address_register to the sprite addr for char in vx
                        3 => // bcd of vx in i,  i+1, i+2
                        {
-                           memory[*address_register       as usize] = (registers[processed_opcode[1] as usize] / 100) as i16;
-                           memory[(*address_register + 1) as usize] = (registers[processed_opcode[1] as usize] /  10) as i16;
-                           memory[(*address_register + 2) as usize] = (registers[processed_opcode[1] as usize] %  10) as i16;
+                           self.memory[self.address_register       as usize] = (self.registers[opcode[1] as usize] / 100) as i16;
+                           self.memory[(self.address_register + 1) as usize] = (self.registers[opcode[1] as usize] /  10) as i16;
+                           self.memory[(self.address_register + 2) as usize] = (self.registers[opcode[1] as usize] %  10) as i16;
                        }, 
-                       5 => Cpu::register_dump(memory, registers, address_register, &(processed_opcode[1] as i16)),
-                       6 => Cpu::register_load(memory, registers, address_register, &(processed_opcode[1] as i16)),
+                       5 => self.register_dump(&(opcode[1] as i16)),
+                       6 => self.register_load( &(opcode[1] as i16)),
                        _ => (),
                    },
                _ => todo!(),
