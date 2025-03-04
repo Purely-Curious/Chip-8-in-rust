@@ -58,12 +58,29 @@ fn main() -> Result<(), io::Error>{
 
 
     // run_chip_8(memory, registers, opcodes, pc);
+
+
+    /*
+    while (¡stop_emulation)
+    {
+    executeCPU(cycles_to_execute);
+    generateInterrupts();
+    emulateGraphics();
+    emulateSound();
+    emulateOtherSoftware();
+    timeSincronization();
+    }
+    Figura 2. Basic Emulator Algorithmu
+    */
     println!("Please enter the name of the chip-8 rom:");
-    let mut filename = String::new();
-    io::stdin().read_line(&mut filename)?;
-    filename = filename.trim_end().to_string();
+    //let filename = "bin/1-chip8-logo.ch8";
+    let filename = "bin/4-flags.ch8"; //String::new();
+   // let filename = "Cave.ch8";
+    //io::stdin().read_line(&mut filename)?;
+    //filename = filename.trim_end().to_string();
     //println!("{:?}", filename);
-    let _chip_8 = chip_8::Chip8::new(filename.as_str(), 640, 320);
+    let mut chip_8 = chip_8::Chip8::new(filename, 640, 320);
+    chip_8.run_chip_8();
     //chip_8.run_chip_8(&mut memory, &mut registers, opcodes, program_counter, stack_pointer, &mut stack, address_register);
     //println!("{:?}", chip_8);
 

@@ -53,61 +53,7 @@ use sdl2::video::Window;
             }
 
         }
-
-        pub fn store_key_value(&mut self, index: usize, mut registers: [u8; 16]) 
-        {
-            for event in self.event_pump.poll_iter()
-            {
-                match event
-                {
-                    Event::KeyDown { keycode: Some(Keycode::A), .. } =>
-                        {
-                            registers[index] = 1;
-                        },
-                    Event::KeyDown { keycode: Some(Keycode::B), .. } =>
-                        {
-                            registers[index] = 2;
-                        },
-                    Event::KeyDown { keycode: Some(Keycode::C), .. } =>
-                        {
-                            registers[index] = 3;
-                        },
-                    Event::KeyDown { keycode: Some(Keycode::D), .. } =>
-                        {
-                            registers[index] = 4;
-                        },
-                        _ => (),
-                }
-            }
-        }
-
-        fn set_screen(&mut self, buffer: [i16; 64 * 32])
-        {
-            let mut _color = Color::WHITE;
-            for row in 0..64
-            {
-                for col in 0..32
-                {
-                    let idx = row * col + col;
-                    self.framebuffer[idx] = buffer[idx]  ^ self.framebuffer[idx];
-
-                    match self.framebuffer[idx]
-                    {
-                        0 => {
-                            todo!()
-                        },
-                        1 => {
-                            todo!()
-                        },
-                        _ => (),
-                    }
-                    //self.canvas.
-                    todo!();
-                }
-            }
-        }
-        pub fn draw_on_screen(&mut self, x: u8, y: u8, nibble: u16)
-        {
+        //pub fn draw_on_screen(&mut self, x: u8, y: u8, nibble: u16){}
             //draw(registers[opcode[1] as usize], registers[opcode[2] as usize], opcode[3]);
                    /*Dxyn - DRW Vx, Vy, nibble
                    Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
@@ -120,27 +66,4 @@ use sdl2::video::Window;
                    it wraps around to the opposite side of the screen.
                    See instruction 8xy3 for more information on XOR, 
                    and section 2.4, Display, for more information on the Chip-8 screen and sprites. */
-        }
-
-        pub fn display_screen(&mut self)
-        {
-            self.canvas.set_draw_color(Color::RGB(0, 255, 255));
-            self.canvas.clear();
-            self.canvas.present();
-
-            'running: loop
-            {
-                for event in self.event_pump.poll_iter()
-                {
-                    match event
-                    {
-                        Event::KeyDown { keycode: Some(Keycode::Escape), .. } =>
-                        {
-                            break 'running;
-                        },
-                        _ => (),
-                    }
-                }
-            }
-        }
     }

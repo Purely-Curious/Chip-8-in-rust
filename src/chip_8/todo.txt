@@ -1,4 +1,11 @@
 TODO:
+[*] rust doesnt like anything that could potentially overflow the registers. >:[
+  [*]: only preserve the lower 8 bits after an operation.
+  [*]: and change explicit register reference to their documentation representation. (i.e, x, y, nnn, kk, n)
+  
+[*] way too much undefined address space from 0x50 ~ 0x200. why idk tbh, i knew this was gonna be an issue well before actually analysing this but no reference actually talks about this space ffs.
+[*] figure out what to do when the index goes out of defined memory.
+
 
 [*]: remove frame_buffer from cpu as the display one can be used instead.
 
