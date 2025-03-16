@@ -15,6 +15,7 @@ use sdl2::Sdl;
         pc: i16,
         ar: i16,
         sp: usize,
+        //pause: bool,
         //dt: i8,
         //st: i8,
     }
@@ -46,11 +47,11 @@ use sdl2::Sdl;
         }
 
         // so for some reason the key press function is ran but not the key log function.
-        fn key_press_check(&mut self, idx: u16, if_pressed: bool, ib: &[i8; 16]) -> ()
+        fn key_press_check(&mut self, idx: u8, if_pressed: bool, ib: &[i8; 16]) -> ()
         {
             if if_pressed
             {
-                if ib[idx as usize] != 0
+                if ib[idx as usize] == 1
                 {
                     self.pc += 2;
                 }
@@ -59,37 +60,22 @@ use sdl2::Sdl;
             {
                 if ib[idx as usize] == 0
                 {
-                    self.pc +=2;
+                    self.pc += 2;
                 }
             }
         }
 
-        fn key_press_wait(&mut self, idx: usize, ib: &mut [i8; 16], ctx: &Sdl)
-        {
-            panic!();
-            let ctxa = sdl2::init().unwrap();
-            let mut event_pump = ctxa.event_pump().unwrap();
-            for event in event_pump.poll_iter() {
-                match event {
-                    Event::KeyDown {keycode: Some(Keycode::Kp0), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::Kp1), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::Kp2), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::Kp3), ..} => { ib[idx] = 1; return; },                    
-                    Event::KeyDown {keycode: Some(Keycode::Kp4), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::Kp5), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::Kp6), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::Kp7), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::Kp8), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::Kp9), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::A), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::B), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::C), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::D), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::E), ..} => { ib[idx] = 1; return; },
-                    Event::KeyDown {keycode: Some(Keycode::F), ..} => { ib[idx] = 1; return; },
-                    _ => continue,
+        fn key_press_wait(&mut self, idx: usize, ib: &mut [i8; 16], key_pressed: &mut bool)
+        {   // need to put the key_press logic in here.
+            for i in 0..16 {
+                // if the key is down but it was formerly pressed then set the register with the index to the value of i.
+                if ib[i as usize] == 0 && *key_pressed {
+                    self.regs[idx] = i;
+                    //*key_pressed = true;
+                    return;
                 }
-            }   
+            }
+            self.pc -= 2;
         }
 
         fn register_load(&mut self, mem: &[u8; 4096], idx: &i16)
@@ -98,14 +84,17 @@ use sdl2::Sdl;
             {
                 self.regs[i as usize] = mem[(self.ar + i) as usize];
             }
+            self.ar += *idx + 1;
         }
 
+        // hmm..
         fn register_dump(&mut self, mem: &mut [u8; 4096], idx: &i16)
         {
             for i in 0..=*idx
             {
                 mem[(self.ar + i) as usize] = self.regs[i as usize];
             }
+            self.ar += *idx + 1;
 
         }
         fn clear_screen(&self, fb: &mut [[i8; 64]; 32])
@@ -117,33 +106,45 @@ use sdl2::Sdl;
         fn draw_on_screen(&mut self, mem: &[u8; 4096], fb: &mut [[i8; 64]; 32], x: u8, y: u8, nibble: u16)
         {
             // Vx and Vy are already passed into this function...
-            let mut row;
-            let mut col = y;
+            let mut row= x % 64;
+            let mut col = y % 32;
             self.regs[0xf] = 0;
 
             for i in self.ar..(self.ar + nibble as i16)
             {
-                row = x % 64;
                 let sprite_byte = mem[i as usize];
+                if (col > 31) {
+                    break;
+                }
+                
+                row = x % 64;
                 for j in 0..8
                 {
+                    if (row > 63) {
+                        break;
+                    }
                     let pixel = ((sprite_byte >> (7 - j)) & 1) as i8;
                     fb[col as usize][row as usize] ^= pixel;
-                    if fb[col as usize][row as usize] == 1
+                    // if the pixel in the framebuffer is set to 0 (i.e. there was a collision)
+                    // set VF to 1;
+                    if fb[col as usize][row as usize] == 0
                     {
-                        self.regs[0xF] = 1;
+                        self.regs[0xf] = 1;
                     }
-                    row = (row + 1) % 64;
+                    
+                    row = (row + 1);
                 }
-                col = (col + 1) % 32;
+                col = (col + 1);
             }
         }
 
 
-       pub fn execute(&mut self, mem: &mut [u8; 4096], fb: &mut [[i8; 64]; 32], ib: &mut [i8; 16], sdl_context: &Sdl, dt: &mut u8, st: &mut u8)
+       pub fn execute(&mut self, mem: &mut [u8; 4096], fb: &mut [[i8; 64]; 32], ib: &mut [i8; 16], dt: &mut u8, st: &mut u8, key_pressed: &mut bool)
        {
         //println!("{}", self.pc);
            let op = self.retrive_opc_data(&mem);
+           println!("{} {:?}", self.pc, op);
+           println!("{:?}", self.regs);
            let x = op[1];
            let y = op[2];
            let Vx = self.regs[x as usize];
@@ -153,9 +154,8 @@ use sdl2::Sdl;
            let nnn = x << 8 | kk;
            self.pc +=2;
 
-           if (op[0] == 0xe) {
-            println!("{:?}", op);
-           }
+           
+           
            //let op = Cpu::retrive_op_data(op);
            match op[0] {
                0 => match op[3]
@@ -168,6 +168,7 @@ use sdl2::Sdl;
                    0xe => 
                        {
                            self.pc = self.stack[self.sp];
+                           self.stack[self.sp] = 0;
                            self.sp -= 1;
                        },
                    _ => return,
@@ -228,16 +229,19 @@ use sdl2::Sdl;
                    //8xx1
                    1 => 
                    {
+                       self.regs[0xf] = 0;
                        self.regs[op[1] as usize] = Vx | Vy;
                    },
                    //8xx2
                    2 => 
                    {
+                    self.regs[0xf] = 0;
                        self.regs[op[1] as usize] = Vx & Vy;
                    }, 
                    //8xx3
                    3 => 
                    {
+                    self.regs[0xf] = 0;
                        self.regs[op[1] as usize] = Vx ^ Vy;
                    },
                    //8xx4
@@ -264,14 +268,13 @@ use sdl2::Sdl;
                        else {
                            self.regs[0xf] = 0;
                        }
-                       // questionable
                    },
                    //8xx6
                    6 => 
                    {
-                       self.regs[op[1] as usize] = Vx >> 1;
+                       self.regs[x as usize] = Vy >> 1;
 
-                        if (Vx & 1) == 1 
+                        if (Vy & 1) == 1 
                         {
                             self.regs[0xf] = 1;
                         }
@@ -297,9 +300,9 @@ use sdl2::Sdl;
                    //8xxe
                    0xe => 
                    {
-                       self.regs[op[1] as usize] = ((Vx as i16) << 1 & 0xff) as u8;
+                       self.regs[x as usize] = ((Vy as i16) << 1 & 0xff) as u8;
 
-                       if ((Vx >> 7) & 1) == 1
+                       if ((Vy >> 7) & 1) == 1
                         {
                            self.regs[0xf] = 1;
                        }
@@ -342,8 +345,8 @@ use sdl2::Sdl;
                0xe => // both ops need keyboard input -> for later. 
                     match op[2]
                     {
-                        9 => self.key_press_check(op[1], true, &ib),
-                        0xa => self.key_press_check(op[1], false, &ib),
+                        9 => self.key_press_check(Vx, true, &ib),
+                        0xa => self.key_press_check(Vx, false, &ib),
                         _ => (),
                     }
                 //fxxx
@@ -356,14 +359,13 @@ use sdl2::Sdl;
                         //fx07
                             7 => 
                             {
-                                //panic!();
                                 self.regs[op[1] as usize] = *dt;
                             },
                             //fx0a
                             0xa => 
                             {
-                                self.key_press_wait(op[1] as usize, ib, sdl_context);
-                                self.pc += 2;
+                                // need a flag to see if the key is pressed or not.
+                                self.key_press_wait(x as usize, ib, key_pressed);
                             },
                             _ => (),
                        },
@@ -377,7 +379,8 @@ use sdl2::Sdl;
                        //fx2x
                        2 => 
                        {
-                        self.ar = 0x50 + ((Vx as i16) / 5) % 16;
+                        // maybe i dont know
+                        self.ar = 0x50 + (Vx as i16 * 8);//((Vx as i16) / 5) % 16;
                        }, // Set ar to the sprite addr for char in vx
                        //fx3x
                        3 => // bcd of vx in i,  i+1, i+2

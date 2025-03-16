@@ -73,9 +73,10 @@ fn main() -> Result<(), io::Error>{
     Figura 2. Basic Emulator Algorithmu
     */
     println!("Please enter the name of the chip-8 rom:");
-    //let filename = "bin/1-chip8-logo.ch8";
-    let filename = "bin/4-flags.ch8"; //String::new();
-   // let filename = "Cave.ch8";
+    let filename = "bin/7-beep.ch8";
+    //let filename = "bin/6-keypad.ch8"; //String::new();
+    //let filename = "Pong 2 (Pong hack) [David Winter, 1997].ch8";
+    //let filename= "Cave.ch8";
     //io::stdin().read_line(&mut filename)?;
     //filename = filename.trim_end().to_string();
     //println!("{:?}", filename);

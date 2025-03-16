@@ -12,16 +12,16 @@ pub struct Ppu
 	window_height: u32,
 	window_width: u32,
 	fb: [i16; 64 * 32],
-    pub sdl_context: Sdl,
+    //pub sdl_context: Sdl,
 	canvas: Canvas<Window>,
 }
 
 // [[]]
 impl Ppu
 {
-	pub fn new(title: String, window_width: u32, window_height: u32) -> Ppu
+	pub fn new(title: String, window_width: u32, window_height: u32, sdl_context: &Sdl) -> Ppu
         {
-            let sdl_context = sdl2::init().unwrap();
+            //let sdl_context = sdl2::init().unwrap();
             let video_subsystem = sdl_context.video().unwrap();
 
             let window = video_subsystem.window(&title.to_string(), window_width, window_height)
@@ -37,7 +37,7 @@ impl Ppu
                 window_height,
                 window_width,
                 fb: [0; 64*32],
-                sdl_context,
+              //  sdl_context,
                 canvas,
             }
 
