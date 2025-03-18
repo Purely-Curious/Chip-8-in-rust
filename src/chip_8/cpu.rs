@@ -1,6 +1,3 @@
-use sdl2::keyboard::Keycode;
-use sdl2::event::Event;
-use sdl2::Sdl;
 
 // ar: Address Register
 // sp: Stack pointer
@@ -105,22 +102,22 @@ use sdl2::Sdl;
         // works for aligned pixels but not for unaligned for some reason....
         fn draw_on_screen(&mut self, mem: &[u8; 4096], fb: &mut [[i8; 64]; 32], x: u8, y: u8, nibble: u16)
         {
-            // Vx and Vy are already passed into this function...
-            let mut row= x % 64;
+            // vx and vy are already passed into this function...
+            let mut row;
             let mut col = y % 32;
             self.regs[0xf] = 0;
 
             for i in self.ar..(self.ar + nibble as i16)
             {
                 let sprite_byte = mem[i as usize];
-                if (col > 31) {
+                if col > 31 {
                     break;
                 }
                 
                 row = x % 64;
                 for j in 0..8
                 {
-                    if (row > 63) {
+                    if row > 63 {
                         break;
                     }
                     let pixel = ((sprite_byte >> (7 - j)) & 1) as i8;
@@ -132,23 +129,29 @@ use sdl2::Sdl;
                         self.regs[0xf] = 1;
                     }
                     
-                    row = (row + 1);
+                    row = (row + 1) % 64;
                 }
-                col = (col + 1);
+                col = col + 1;
             }
         }
 
 
+       fn debug_display(&self, op: Vec<u8>)
+       {
+           println!("Current value of program counter: {} \nCurrent opcode: {:?}", self.pc, op);
+           println!("Value of registers: {:?}", self.regs);
+           println!();
+       }
+
        pub fn execute(&mut self, mem: &mut [u8; 4096], fb: &mut [[i8; 64]; 32], ib: &mut [i8; 16], dt: &mut u8, st: &mut u8, key_pressed: &mut bool)
        {
-        //println!("{}", self.pc);
            let op = self.retrive_opc_data(&mem);
-           println!("{} {:?}", self.pc, op);
-           println!("{:?}", self.regs);
+            //self.debug_display(op.clone());
+
            let x = op[1];
            let y = op[2];
-           let Vx = self.regs[x as usize];
-           let Vy = self.regs[y as usize];
+           let vx = self.regs[x as usize];
+           let vy = self.regs[y as usize];
            let n = op[3];
            let kk = y << 4 | n; 
            let nnn = x << 8 | kk;
@@ -156,7 +159,6 @@ use sdl2::Sdl;
 
            
            
-           //let op = Cpu::retrive_op_data(op);
            match op[0] {
                0 => match op[3]
                {
@@ -187,7 +189,7 @@ use sdl2::Sdl;
                //3xxx
                0x3 => 
                {
-                   if Vx == kk as u8
+                   if vx == kk as u8
                    {
                        self.pc += 2;
                    }
@@ -195,7 +197,7 @@ use sdl2::Sdl;
                //4xxx
                0x4 =>
                {
-                   if Vx != kk as u8
+                   if vx != kk as u8
                    {
                        self.pc += 2;
                    }
@@ -203,7 +205,7 @@ use sdl2::Sdl;
                //5xxx
                0x5 => 
                {
-                   if Vx == Vy
+                   if vx == vy
                    {
                        self.pc += 2;
                    }
@@ -216,7 +218,7 @@ use sdl2::Sdl;
                //7xxx
                0x7 => 
                {
-                  self.regs[op[1] as usize] = ((Vx as u16 + kk) & 0xff) as u8;
+                  self.regs[op[1] as usize] = ((vx as u16 + kk) & 0xff) as u8;
                },
                //8xxx
                0x8 => match op[3] 
@@ -224,31 +226,31 @@ use sdl2::Sdl;
                 //8xx0
                    0 => 
                    {
-                       self.regs[op[1] as usize] = Vy;
+                       self.regs[op[1] as usize] = vy;
                    },
                    //8xx1
                    1 => 
                    {
                        self.regs[0xf] = 0;
-                       self.regs[op[1] as usize] = Vx | Vy;
+                       self.regs[op[1] as usize] = vx | vy;
                    },
                    //8xx2
                    2 => 
                    {
                     self.regs[0xf] = 0;
-                       self.regs[op[1] as usize] = Vx & Vy;
+                       self.regs[op[1] as usize] = vx & vy;
                    }, 
                    //8xx3
                    3 => 
                    {
                     self.regs[0xf] = 0;
-                       self.regs[op[1] as usize] = Vx ^ Vy;
+                       self.regs[op[1] as usize] = vx ^ vy;
                    },
                    //8xx4
                    4 => 
                    {
-                       self.regs[op[1] as usize] = ((Vx as i16 + Vy as i16) & 0xff) as u8;  
-                       if Vx as i16 + Vy as i16 > 255
+                       self.regs[op[1] as usize] = ((vx as i16 + vy as i16) & 0xff) as u8;  
+                       if vx as i16 + vy as i16 > 255
                        {
                            self.regs[0xf] = 1;
                        }
@@ -259,9 +261,9 @@ use sdl2::Sdl;
                    },
                    5 => 
                    {
-                       self.regs[op[1] as usize] = ((Vx as i16 - Vy as i16) & 0xff) as u8;
+                       self.regs[op[1] as usize] = ((vx as i16 - vy as i16) & 0xff) as u8;
                        
-                       if Vx >= Vy
+                       if vx >= vy
                        {
                            self.regs[0xf] = 1;
                        }
@@ -272,9 +274,9 @@ use sdl2::Sdl;
                    //8xx6
                    6 => 
                    {
-                       self.regs[x as usize] = Vy >> 1;
+                       self.regs[x as usize] = vy >> 1;
 
-                        if (Vy & 1) == 1 
+                        if (vy & 1) == 1 
                         {
                             self.regs[0xf] = 1;
                         }
@@ -286,9 +288,9 @@ use sdl2::Sdl;
                  //8xx7
                    7 => 
                    {
-                       self.regs[op[1] as usize] = ((Vy as i16 - Vx as i16) & 0xff) as u8;
+                       self.regs[op[1] as usize] = ((vy as i16 - vx as i16) & 0xff) as u8;
 
-                       if Vy >= Vx
+                       if vy >= vx
                        {
                            self.regs[0xf] = 1;
                        }
@@ -300,9 +302,9 @@ use sdl2::Sdl;
                    //8xxe
                    0xe => 
                    {
-                       self.regs[x as usize] = ((Vy as i16) << 1 & 0xff) as u8;
+                       self.regs[x as usize] = ((vy as i16) << 1 & 0xff) as u8;
 
-                       if ((Vy >> 7) & 1) == 1
+                       if ((vy >> 7) & 1) == 1
                         {
                            self.regs[0xf] = 1;
                        }
@@ -317,7 +319,7 @@ use sdl2::Sdl;
                //9xxx
                0x9 => 
                {
-                   if Vx != Vy
+                   if vx != vy
                    {
                        self.pc += 2;
                    }
@@ -327,7 +329,7 @@ use sdl2::Sdl;
                {
                    self.ar = nnn as i16;
                },
-               0xb => // Jump => set the program counter to another addr. Vx = nnn + V0
+               0xb => // Jump => set the program counter to another addr. vx = nnn + V0
                {
                    self.pc = (nnn + (self.regs[0x0] as u16)) as i16;
                },
@@ -338,15 +340,15 @@ use sdl2::Sdl;
                //dxxx
                0xd => 
                {
-                   self.draw_on_screen(&mem, fb, Vx, Vy, n);
+                   self.draw_on_screen(&mem, fb, vx, vy, n);
                    
                },
                //exxx
                0xe => // both ops need keyboard input -> for later. 
                     match op[2]
                     {
-                        9 => self.key_press_check(Vx, true, &ib),
-                        0xa => self.key_press_check(Vx, false, &ib),
+                        9 => self.key_press_check(vx, true, &ib),
+                        0xa => self.key_press_check(vx, false, &ib),
                         _ => (),
                     }
                 //fxxx
@@ -371,23 +373,23 @@ use sdl2::Sdl;
                        },
                        //fx1x
                        1 => match op[3] {
-                           5 => *dt = Vx, // Sets the delay timer to VX
-                           8 => *st = Vx, // Sets the sound timer to VX
-                           0xe => self.ar += Vx as i16, // I + Vx
+                           5 => *dt = vx, // Sets the delay timer to vx
+                           8 => *st = vx, // Sets the sound timer to vx
+                           0xe => self.ar += vx as i16, // I + vx
                            _ => (),
                        }
                        //fx2x
                        2 => 
                        {
                         // maybe i dont know
-                        self.ar = 0x50 + (Vx as i16 * 8);//((Vx as i16) / 5) % 16;
+                        self.ar = 0x50 + (vx as i16 * 8);//((vx as i16) / 5) % 16;
                        }, // Set ar to the sprite addr for char in vx
                        //fx3x
                        3 => // bcd of vx in i,  i+1, i+2
                        {
-                           mem[self.ar       as usize] = (Vx / 100) % 10;
-                           mem[(self.ar + 1) as usize] = (Vx / 10)  % 10;
-                           mem[(self.ar + 2) as usize] = Vx         % 10;
+                           mem[self.ar       as usize] = (vx / 100) % 10;
+                           mem[(self.ar + 1) as usize] = (vx / 10)  % 10;
+                           mem[(self.ar + 2) as usize] = vx         % 10;
                        }, 
                        5 => self.register_dump(mem, &(op[1] as i16)),
                        6 => self.register_load(mem, &(op[1] as i16)),

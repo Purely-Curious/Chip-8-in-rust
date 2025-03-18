@@ -2,8 +2,8 @@ mod cpu;
 mod ppu;
 mod audio;
 
-use std::thread::sleep;
-use std::time::Duration;
+//use std::thread::sleep;
+//use std::time::Duration;
 use std::{fs, io, time};
 
 use sdl2::event::Event;
@@ -170,11 +170,11 @@ impl Chip8
 
             if time_difference > cycle_delay 
             {
-                for i in 0..number_of_instructions/60 {                    
+                for _ in 0..number_of_instructions/60 {                    
                     //    self.process_input(&mut key_pressed);
                     self.cpu.execute(&mut self.memory, &mut self.framebuffer, &mut self.inputbuffer, &mut delay_timer, &mut sound_timer, &mut key_pressed);
-                    //self.audio_system.play_audio(&mut self.cpu.sound_timer);
-                    println!("{:?}", self.inputbuffer);
+                    //self.audio_system.play_audio(&mut sound_timer);
+                    //println!("{:?}", self.inputbuffer);
                 }
                 self.ppu.update_graphics(&self.framebuffer);
                 

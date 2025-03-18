@@ -1,7 +1,7 @@
 extern crate sdl2; 
 
 use sdl2::{audio::{AudioCallback, AudioSpecDesired}, AudioSubsystem, Sdl};
-use std::time::Duration;
+//use std::time::Duration;
 
 
 struct SquareWave {
@@ -63,12 +63,12 @@ impl Apu
         }).unwrap();
 
 
-        //if *sound_timer > 0 {
+        if *sound_timer > 0 {
            //device.pause();
             device.resume();
-            std::thread::sleep(Duration::from_millis(16));
+            //std::thread::sleep(Duration::from_millis(16));
 
-            //}
+        }
         //
     }
 }
